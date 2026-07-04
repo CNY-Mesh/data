@@ -1,0 +1,27 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Runtime data and local state
+/data/
+*.pid
+*.log
+
+# Local database files
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

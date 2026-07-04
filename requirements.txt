@@ -1,0 +1,14 @@
+# MQTT client for Meshtastic communication
+paho-mqtt>=1.6.0
+
+# Environment variable loading
+python-dotenv>=1.0.0
+
+# Cryptography for decryption
+cryptography>=3.4.8
+
+# Meshtastic protobuf libraries
+meshtastic>=2.0.0
+
+# Optional: Additional utilities
+protobuf>=3.20.0

@@ -1,0 +1,7 @@
+paho-mqtt>=1.6.0
+python-dotenv>=1.0.0
+cryptography>=40.0.0
+meshtastic>=2.2.0
+protobuf>=4.21.0
+requests>=2.31.0
+protobuf>=5.27.0

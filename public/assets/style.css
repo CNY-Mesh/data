@@ -1,0 +1,1199 @@
+/* CNYmesh Dark Theme with High Contrast */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background: #1a1a1a;
+    color: #f5f5f5;
+    line-height: 1.5;
+}
+
+/* Header Styling */
+header {
+    padding: 14px 18px;
+    background: #2d2d2d;
+    border-bottom: 2px solid #444;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.header-nav-wrapper {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    justify-content: flex-end;
+}
+
+.header-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.header-nav a {
+    color: #87ceeb;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.header-nav a:hover {
+    background: #444;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+/* Mobile Navigation */
+.navbar-toggler {
+    background: none;
+    border: 1px solid #555;
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 18px;
+}
+
+.navbar-toggler:hover {
+    background: #444;
+    border-color: #666;
+}
+
+.mobile-nav {
+    padding: 16px 0;
+    background: #333;
+    border-top: 1px solid #555;
+}
+
+.mobile-nav a {
+    display: block;
+    color: #87ceeb;
+    text-decoration: none;
+    padding: 8px 0;
+    border-bottom: 1px solid #444;
+    transition: all 0.2s ease;
+}
+
+.mobile-nav a:hover {
+    background: #444;
+    padding-left: 8px;
+    color: #ffffff;
+}
+
+.mobile-user-info {
+    padding: 16px 0;
+    border-top: 2px solid #555;
+    margin-top: 16px;
+}
+
+.mobile-user-info span {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    color: #e0e0e0;
+}
+
+h1 {
+    font-size: 18px;
+    margin: 0;
+    color: #ffffff;
+}
+
+/* Legacy nav styles removed - now handled by header-nav classes above */
+
+/* Logo Container */
+.logo-container {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logo-container img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Main Content */
+main {
+    padding: 16px;
+    min-height: calc(100vh - 200px);
+}
+
+/* Statistics Grid */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+/* Cards */
+.card {
+    background: #2d2d2d;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    color: #ffffff !important;
+}
+
+.metric {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.label {
+    color: #e0e0e0;
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+/* Telemetry Charts */
+.telemetry-charts {
+    margin-bottom: 20px;
+}
+
+.chart-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.chart-item {
+    flex: 1;
+    background: #2d2d2d;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    min-width: 0;
+}
+
+.chart-container {
+    width: 100%;
+    height: 120px;
+    margin: 8px 0;
+    position: relative;
+}
+
+.chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-item h5 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.chart-item small {
+    display: block;
+    margin-top: 8px;
+    color: #ccc;
+    font-weight: 500;
+}
+
+.uptime-display {
+    background: #2d2d2d;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.uptime-display h5 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.uptime-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #87ceeb;
+    font-family: 'Courier New', monospace;
+}
+
+/* Responsive telemetry layout */
+@media (max-width: 768px) {
+    .chart-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .chart-item {
+        margin-bottom: 0;
+    }
+}
+
+/* Tables */
+.table-wrap {
+    overflow: auto;
+    background: #2d2d2d;
+    border: 1px solid #555;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th, td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #444;
+    text-align: left;
+    color: #ffffff;
+}
+
+th {
+    position: sticky;
+    top: 0;
+    background: #3d3d3d;
+    color: #ffffff;
+    font-weight: 600;
+    border-bottom: 2px solid #555;
+}
+
+td {
+    color: #ffffff;
+    background: rgba(45, 45, 45, 0.8);
+}
+
+tr:hover {
+    background: #333;
+}
+
+tr:hover td {
+    color: #ffffff;
+}
+
+/* Bootstrap Override for Dark Theme */
+.table {
+    color: #ffffff !important;
+}
+
+.table-dark {
+    background: #2d2d2d;
+    color: #ffffff !important;
+}
+
+.table-dark th {
+    background: #3d3d3d;
+    border-color: #555;
+    color: #ffffff !important;
+}
+
+.table-dark td {
+    border-color: #444;
+    color: #ffffff !important;
+}
+
+.table-responsive {
+    background: #2d2d2d;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > td {
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff !important;
+}
+
+.table-hover > tbody > tr:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff !important;
+}
+
+.table-hover > tbody > tr:hover > td {
+    color: #ffffff !important;
+}
+
+/* Comprehensive Table Styling - Dark Theme */
+.table,
+.data-table {
+    background: #2d2d2d !important;
+    color: #ffffff !important;
+    border-color: #555 !important;
+}
+
+.table th,
+.table td,
+.data-table th,
+.data-table td {
+    background: #2d2d2d !important;
+    color: #ffffff !important;
+    border-color: #444 !important;
+    vertical-align: middle;
+}
+
+.table thead th,
+.data-table thead th {
+    background: #3d3d3d !important;
+    color: #ffffff !important;
+    border-color: #555 !important;
+    font-weight: 600;
+}
+
+/* Striped rows - subtle alternation */
+.table-striped > tbody > tr:nth-of-type(odd) > td,
+.data-table tr:nth-child(odd) td {
+    background: #2a2a2a !important;
+    color: #ffffff !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(even) > td,
+.data-table tr:nth-child(even) td {
+    background: #2d2d2d !important;
+    color: #ffffff !important;
+}
+
+/* Hover effects */
+.table-hover > tbody > tr:hover,
+.table-hover > tbody > tr:hover > td,
+.data-table tr:hover,
+.data-table tr:hover td {
+    background: #404040 !important;
+    color: #ffffff !important;
+}
+
+/* Special row types for positions */
+.data-table tr.known-node td {
+    background: #1a3d2e !important;
+    color: #ffffff !important;
+}
+
+.data-table tr.unknown-node td {
+    background: #3d1a1a !important;
+    color: #ffffff !important;
+}
+
+.data-table tr.known-node:hover td {
+    background: #2d5a47 !important;
+    color: #ffffff !important;
+}
+
+.data-table tr.unknown-node:hover td {
+    background: #5a2d2d !important;
+    color: #ffffff !important;
+}
+
+/* Text elements in tables */
+.table .text-muted,
+.data-table .text-muted {
+    color: #adb5bd !important;
+}
+
+.table .unknown,
+.data-table .unknown {
+    color: #adb5bd !important;
+}
+
+.table .time-ago,
+.data-table .time-ago {
+    color: #ced4da !important;
+}
+
+.table code,
+.data-table code {
+    background: #404040 !important;
+    color: #ffffff !important;
+    border: 1px solid #555;
+}
+
+.table .bg-light,
+.data-table .bg-light {
+    background: #404040 !important;
+    color: #ffffff !important;
+}
+
+.table .badge,
+.data-table .badge {
+    color: #ffffff !important;
+}
+
+/* Action buttons in tables */
+.action-buttons button,
+.action-buttons a {
+    background: #404040 !important;
+    color: #ffffff !important;
+    border: 1px solid #555 !important;
+}
+
+.action-buttons button:hover,
+.action-buttons a:hover {
+    background: #505050 !important;
+    color: #ffffff !important;
+}
+
+/* Cards for Bootstrap */
+.card {
+    background: #2d2d2d !important;
+    border: 1px solid #555 !important;
+    color: #ffffff !important;
+}
+
+.card-header {
+    background: #3d3d3d !important;
+    border-bottom: 1px solid #555 !important;
+    color: #ffffff !important;
+}
+
+.card-body {
+    background: #2d2d2d !important;
+    color: #ffffff !important;
+}
+
+.card-title {
+    color: #ffffff !important;
+}
+
+.card-text {
+    color: #e0e0e0 !important;
+}
+
+/* Ensure all card content is visible */
+.card * {
+    color: inherit;
+}
+
+.card .text-muted {
+    color: #b0b0b0 !important;
+}
+
+.card .small {
+    color: #e0e0e0 !important;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 6px;
+    border: 1px solid;
+}
+
+.alert-info {
+    background: #1e3a5f !important;
+    border-color: #2e5a8f !important;
+    color: #b3d9ff !important;
+}
+
+.alert-warning {
+    background: #5a4a1e !important;
+    border-color: #8a7a2e !important;
+    color: #ffd9b3 !important;
+}
+
+.alert-success {
+    background: #1e5a3d !important;
+    border-color: #2e8a5d !important;
+    color: #b3ffcc !important;
+}
+
+.alert-danger {
+    background: #5a1e1e !important;
+    border-color: #8a2e2e !important;
+    color: #ffb3b3 !important;
+}
+
+/* Links */
+a {
+    color: #66b3ff;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #99ccff;
+    text-decoration: none;
+}
+
+.text-decoration-none {
+    text-decoration: none !important;
+}
+
+/* Node Links */
+.node-link {
+    color: #87ceeb !important;
+    text-decoration: none;
+    display: block;
+    padding: 4px 0;
+    transition: all 0.2s ease;
+}
+
+.node-link:hover {
+    color: #ffffff !important;
+    text-decoration: none;
+}
+
+.node-link strong {
+    color: inherit;
+    font-weight: 600;
+}
+
+.node-link small.text-muted {
+    color: #aaa !important;
+    font-size: 0.8em;
+}
+
+.node-link:hover small.text-muted {
+    color: #ccc !important;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: #0066cc !important;
+    border-color: #0066cc !important;
+    color: #ffffff !important;
+}
+
+.btn-primary:hover {
+    background: #0052a3 !important;
+    border-color: #0052a3 !important;
+}
+
+.btn-outline-primary {
+    color: #66b3ff !important;
+    border-color: #66b3ff !important;
+}
+
+.btn-outline-primary:hover {
+    background: #66b3ff !important;
+    color: #1a1a1a !important;
+}
+
+/* Forms */
+.form-control {
+    background: #2d2d2d !important;
+    border: 1px solid #555 !important;
+    color: #f5f5f5 !important;
+}
+
+.form-control:focus {
+    background: #3d3d3d !important;
+    border-color: #66b3ff !important;
+    box-shadow: 0 0 0 0.2rem rgba(102, 179, 255, 0.25) !important;
+    color: #ffffff !important;
+}
+
+.input-group-text {
+    background: #2d2d2d !important;
+    border: 1px solid #555 !important;
+    color: #f5f5f5 !important;
+}
+
+.input-group-text i {
+    color: #87ceeb !important;
+}
+
+.form-select {
+    background: #2d2d2d !important;
+    border: 1px solid #555 !important;
+    color: #f5f5f5 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f5f5f5' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+    padding-right: 2.25rem !important;
+}
+
+.form-select:focus {
+    background: #3d3d3d !important;
+    border-color: #66b3ff !important;
+    box-shadow: 0 0 0 0.2rem rgba(102, 179, 255, 0.25) !important;
+    color: #ffffff !important;
+}
+
+.form-select option {
+    background: #2d2d2d !important;
+    color: #f5f5f5 !important;
+}
+
+/* Table hover states */
+.table tbody tr:hover {
+    background-color: #3d3d3d !important;
+    color: #ffffff !important;
+}
+
+.table tbody tr:hover td {
+    color: #ffffff !important;
+}
+
+.table tbody tr:hover td a {
+    color: #87ceeb !important;
+}
+
+.table tbody tr:hover td a:hover {
+    color: #66b3ff !important;
+}
+
+.form-label {
+    color: #e0e0e0 !important;
+    font-weight: 500;
+}
+
+/* Badges */
+.badge {
+    font-size: 0.75em;
+    padding: 0.35em 0.6em;
+}
+
+.badge.bg-primary {
+    background: #0066cc !important;
+}
+
+.badge.bg-secondary {
+    background: #555 !important;
+}
+
+.badge.bg-success {
+    background: #28a745 !important;
+}
+
+.badge.bg-warning {
+    background: #ffc107 !important;
+    color: #000 !important;
+}
+
+.badge.bg-danger {
+    background: #dc3545 !important;
+}
+
+.badge.bg-info {
+    background: #17a2b8 !important;
+}
+
+/* Filter and Stats Sections - Dark Theme */
+.filter-section {
+    background: #2d2d2d !important;
+    border: 1px solid #555 !important;
+    color: #ffffff !important;
+}
+
+.filter-section summary {
+    background: #3d3d3d !important;
+    color: #ffffff !important;
+    border-bottom: 1px solid #555;
+}
+
+.filters-form {
+    background: #2d2d2d !important;
+    color: #ffffff !important;
+}
+
+.filter-group label {
+    color: #e0e0e0 !important;
+}
+
+.filter-group input,
+.filter-group select {
+    background: #404040 !important;
+    border: 1px solid #666 !important;
+    color: #ffffff !important;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+    background: #404040 !important;
+    border-color: #87ceeb !important;
+    color: #ffffff !important;
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(135, 206, 235, 0.25);
+}
+
+.filter-group input::placeholder {
+    color: #adb5bd !important;
+}
+
+.range-inputs span {
+    color: #e0e0e0 !important;
+}
+
+.filter-buttons button,
+.filter-buttons a {
+    background: #404040 !important;
+    color: #ffffff !important;
+    border: 1px solid #666 !important;
+}
+
+.filter-buttons button:hover,
+.filter-buttons a:hover {
+    background: #505050 !important;
+    color: #ffffff !important;
+}
+
+.filter-buttons button[type="submit"] {
+    background: #0066cc !important;
+    border-color: #0066cc !important;
+    color: #ffffff !important;
+}
+
+.filter-buttons button[type="submit"]:hover {
+    background: #0052a3 !important;
+    border-color: #0052a3 !important;
+}
+
+.filter-buttons .btn-secondary {
+    background: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #ffffff !important;
+}
+
+.filter-buttons .btn-secondary:hover {
+    background: #545b62 !important;
+    border-color: #545b62 !important;
+}
+
+/* Stats Section */
+.stats-section {
+    background: #2d2d2d !important;
+    border: 1px solid #555 !important;
+    color: #ffffff !important;
+}
+
+.stat-number {
+    color: #87ceeb !important;
+}
+
+.stat-label {
+    color: #e0e0e0 !important;
+}
+
+.coverage-info {
+    color: #adb5bd !important;
+}
+
+.coverage-info small {
+    color: #adb5bd !important;
+}
+
+/* Map Controls */
+.map-controls button {
+    background: #404040 !important;
+    border: 1px solid #666 !important;
+    color: #ffffff !important;
+}
+
+.map-controls button:hover {
+    background: #505050 !important;
+    color: #ffffff !important;
+}
+
+.map-container {
+    border: 1px solid #555 !important;
+}
+
+.badge.bg-info {
+    background: #17a2b8 !important;
+}
+
+.badge.bg-light {
+    background: #666 !important;
+    color: #f5f5f5 !important;
+}
+
+/* Grid Layout */
+.grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Map Wrapper */
+.map-wrap {
+    margin: 16px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #555;
+}
+
+/* Footer */
+footer {
+    padding: 10px 18px;
+    border-top: 2px solid #444;
+    background: #2d2d2d;
+    color: #b0b0b0;
+    text-align: center;
+}
+
+/* Login Form Styling */
+.login-card {
+    background: #2d2d2d !important;
+    border: 1px solid #555 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Small text */
+.small, small {
+    color: #e0e0e0 !important;
+}
+
+.text-muted {
+    color: #b0b0b0 !important;
+}
+
+/* General div and content styling */
+div {
+    color: inherit;
+}
+
+/* Ensure all text elements have proper contrast */
+p, span, li, ul, ol {
+    color: #f5f5f5;
+}
+
+/* Strong emphasis */
+strong, b {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* Code and monospace text */
+code, .font-monospace {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* List items */
+.list-group-item {
+    background: #2d2d2d !important;
+    color: #ffffff !important;
+    border-color: #555 !important;
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
+    .grid2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    header .d-flex {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .user-info {
+        order: -1;
+    }
+    
+    nav {
+        order: 1;
+        justify-content: center;
+    }
+    
+    main {
+        padding: 12px;
+    }
+    
+    .stats {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+    }
+}
+
+/* High contrast mode improvements */
+@media (prefers-contrast: high) {
+    body {
+        background: #000000;
+        color: #ffffff;
+    }
+    
+    .card {
+        background: #1a1a1a !important;
+        border: 2px solid #888 !important;
+    }
+    
+    table th {
+        background: #000000;
+        color: #ffffff;
+    }
+}
+
+/* Additional contrast improvements */
+.text-light {
+    color: #ffffff !important;
+}
+
+.text-white {
+    color: #ffffff !important;
+}
+
+/* Ensure Bootstrap components don't override our colors */
+.bg-light {
+    background: #3d3d3d !important;
+    color: #ffffff !important;
+}
+
+.bg-secondary {
+    background: #555 !important;
+    color: #ffffff !important;
+}
+
+/* Force high contrast on all content */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Table cell content */
+td a, th a {
+    color: #66b3ff !important;
+}
+
+td a:hover, th a:hover {
+    color: #99ccff !important;
+}
+
+/* Ensure badges are visible */
+.badge {
+    font-weight: 600;
+    text-shadow: none;
+}
+
+/* Statistical cards specific styling */
+.stat-card, .stat-item {
+    background: #2d2d2d !important;
+    color: #ffffff !important;
+    border: 1px solid #555;
+}
+
+.stat-number {
+    color: #ffffff !important;
+    font-weight: 700;
+}
+
+.stat-label {
+    color: #e0e0e0 !important;
+}
+
+/* ==================================================== */
+/* LEAFLET MAP DARK THEME OVERRIDES */
+/* ==================================================== */
+
+/* Leaflet Zoom Controls */
+.leaflet-control-zoom a {
+    background-color: #2d2d2d !important;
+    border: 1px solid #555 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background-color: #404040 !important;
+    color: #ffffff !important;
+}
+
+.leaflet-control-zoom a:focus {
+    background-color: #404040 !important;
+    color: #ffffff !important;
+    outline: 2px solid #66b3ff !important;
+}
+
+/* Leaflet Attribution Control */
+.leaflet-control-attribution {
+    background: #2d2d2d !important;
+    color: #e0e0e0 !important;
+    border: 1px solid #555 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.leaflet-control-attribution a {
+    color: #87ceeb !important;
+}
+
+.leaflet-control-attribution a:hover {
+    color: #66b3ff !important;
+}
+
+/* Leaflet Popups */
+.leaflet-popup-content-wrapper {
+    background: #2d2d2d !important;
+    color: #ffffff !important;
+    border: 1px solid #555 !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+.leaflet-popup-content {
+    color: #ffffff !important;
+    margin: 13px 19px !important;
+}
+
+.leaflet-popup-content h1,
+.leaflet-popup-content h2,
+.leaflet-popup-content h3,
+.leaflet-popup-content h4,
+.leaflet-popup-content h5,
+.leaflet-popup-content h6 {
+    color: #ffffff !important;
+}
+
+.leaflet-popup-content b,
+.leaflet-popup-content strong {
+    color: #e0e0e0 !important;
+}
+
+.leaflet-popup-tip {
+    background: #2d2d2d !important;
+    border: 1px solid #555 !important;
+}
+
+.leaflet-popup-close-button {
+    color: #e0e0e0 !important;
+    background: transparent !important;
+    font-size: 18px !important;
+}
+
+.leaflet-popup-close-button:hover {
+    color: #ffffff !important;
+    background: #404040 !important;
+}
+
+/* Custom Legend Dark Theme */
+.legend {
+    background: #2d2d2d !important;
+    color: #ffffff !important;
+    border: 2px solid #555 !important;
+    border-radius: 5px !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+.legend h4 {
+    color: #ffffff !important;
+    margin: 0 0 10px 0 !important;
+}
+
+.legend div {
+    color: #e0e0e0 !important;
+}
+
+/* Leaflet Container Dark Background */
+.leaflet-container {
+    background: #1a1a1a !important;
+}
+
+/* Leaflet Tiles - Add slight overlay for better contrast */
+.leaflet-tile-pane {
+    filter: brightness(0.8) contrast(1.1) !important;
+}
+
+/* Layer Control (if used) */
+.leaflet-control-layers {
+    background: #2d2d2d !important;
+    border: 1px solid #555 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.leaflet-control-layers-overlays label,
+.leaflet-control-layers-base label {
+    color: #e0e0e0 !important;
+}
+
+/* Marker Popup Content Styling */
+.leaflet-popup-content span[style*="color: #10B981"] {
+    color: #10B981 !important;
+}
+
+.leaflet-popup-content span[style*="color: #EF4444"] {
+    color: #EF4444 !important;
+}
+
+/* ==================================================== */
+/* STATIC MAP STYLING FOR NODE CARDS */
+/* ==================================================== */
+
+/* Static map images in node cards */
+.static-node-map {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    cursor: pointer;
+    border: 1px solid #555;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    background: #2d2d2d;
+}
+
+.static-node-map:hover {
+    border-color: #66b3ff;
+    transform: scale(1.02);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Loading placeholder for maps */
+.map-loading {
+    background: #2d2d2d;
+    border: 1px solid #555;
+    border-radius: 6px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #e0e0e0;
+    font-size: 14px;
+}
+
+/* Map container in node cards */
+.node-map-container {
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.node-map-container::after {
+    content: "🗺️ Click to open in full map";
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(45, 45, 45, 0.9);
+    color: #ffffff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.node-map-container:hover::after {
+    opacity: 1;
+}

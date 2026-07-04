@@ -1,0 +1,25 @@
+# Protect all PHP files in public directory except index.php
+# Redirect all requests to main application for authentication
+
+RewriteEngine On
+
+# Allow access to assets directory
+RewriteRule ^assets/ - [L]
+
+# Allow access to index.php (main entry point)
+RewriteRule ^index\.php$ - [L]
+
+# Redirect all other .php files to the main application with error
+RewriteRule ^(.+\.php)$ /index.php?error=access_denied&file=$1 [R=302,L]
+
+# Optional: Prevent direct access to other files
+<Files "*.php">
+    <RequireAll>
+        Require expr "%{REQUEST_URI} =~ m#/index\.php$#"
+    </RequireAll>
+</Files>
+
+# Deny access to debug_index.php specifically (moved to tools controller)
+<Files "debug_index.php">
+    Require all denied
+</Files>
