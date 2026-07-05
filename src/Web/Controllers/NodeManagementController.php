@@ -23,8 +23,18 @@ final class NodeManagementController extends BaseController
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ourNodes = trim($_POST['our_nodes'] ?? '');
             $nodeHistoryIds = trim($_POST['node_history_ids'] ?? '');
+            $selectedOurNodes = $_POST['selected_our_nodes'] ?? [];
 
             try {
+                if (!is_array($selectedOurNodes)) {
+                    $selectedOurNodes = [];
+                }
+
+                // If the checkbox list is present, make it authoritative for seen nodes.
+                if (isset($_POST['use_checkbox_selection'])) {
+                    $ourNodes = $this->buildOurNodesFromSelection($ourNodes, $selectedOurNodes);
+                }
+
                 // Validate the node IDs (basic validation)
                 $this->validateNodeIds($ourNodes, 'OUR_NODES');
                 $this->validateNodeIds($nodeHistoryIds, 'NODE_HISTORY_IDS');
@@ -41,6 +51,12 @@ final class NodeManagementController extends BaseController
         $currentOurNodes = Env::get('OUR_NODES', '');
         $currentNodeHistoryIds = Env::get('NODE_HISTORY_IDS', '');
 
+        $seenNodeInfoNodes = $this->getSeenNodeInfoNodes();
+        $currentOurNodeNumLookup = array_fill_keys(
+            $this->parseNodeIdsToDecimal($currentOurNodes),
+            true
+        );
+
         // Get node details for display
         $ourNodesDetails = $this->getNodeDetails($currentOurNodes);
         $nodeHistoryDetails = $this->getNodeDetails($currentNodeHistoryIds);
@@ -48,6 +64,8 @@ final class NodeManagementController extends BaseController
         $this->render('node_management', compact(
             'currentOurNodes', 
             'currentNodeHistoryIds', 
+            'seenNodeInfoNodes',
+            'currentOurNodeNumLookup',
             'ourNodesDetails', 
             'nodeHistoryDetails', 
             'message', 
@@ -152,5 +170,71 @@ final class NodeManagementController extends BaseController
         $stmt->execute($decimalNodes);
         
         return $stmt->fetchAll();
+    }
+
+    private function getSeenNodeInfoNodes(): array
+    {
+        $stmt = $this->db->pdo()->prepare("\n            SELECT node_num, long_name, short_name, hardware, last_seen,\n                   DATETIME(last_seen, 'unixepoch') as last_seen_time\n            FROM nodes\n            WHERE last_seen IS NOT NULL\n            ORDER BY last_seen DESC\n        ");
+        $stmt->execute();
+
+        return $stmt->fetchAll();
+    }
+
+    private function parseNodeIdsToDecimal(string $nodeIds): array
+    {
+        if ($nodeIds === '') {
+            return [];
+        }
+
+        $nodes = array_filter(array_map('trim', explode(',', $nodeIds)), static function ($node): bool {
+            return $node !== '';
+        });
+
+        $decimalNodes = [];
+        foreach ($nodes as $node) {
+            if (preg_match('/^[0-9a-fA-F]+$/', $node) && preg_match('/[a-fA-F]/', $node)) {
+                $decimalNodes[] = (int) hexdec($node);
+            } elseif (preg_match('/^[0-9]+$/', $node)) {
+                $decimalNodes[] = (int) $node;
+            }
+        }
+
+        return array_values(array_unique(array_filter($decimalNodes, static function (int $n): bool {
+            return $n > 0;
+        })));
+    }
+
+    private function sanitizeNodeNumArray(array $rawNodeNums): array
+    {
+        $normalized = [];
+        foreach ($rawNodeNums as $value) {
+            if (!is_scalar($value)) {
+                continue;
+            }
+
+            $nodeNum = (int) trim((string) $value);
+            if ($nodeNum > 0) {
+                $normalized[] = $nodeNum;
+            }
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    private function buildOurNodesFromSelection(string $ourNodesInput, array $selectedOurNodes): string
+    {
+        $selectedNodeNums = $this->sanitizeNodeNumArray($selectedOurNodes);
+        $manualNodeNums = $this->parseNodeIdsToDecimal($ourNodesInput);
+        $seenNodeNums = array_column($this->getSeenNodeInfoNodes(), 'node_num');
+        $seenNodeLookup = array_fill_keys(array_map('intval', $seenNodeNums), true);
+
+        // Keep manual entries that are not in seen-node list, so users can still track custom IDs.
+        $manualOnlyNodeNums = array_values(array_filter($manualNodeNums, static function (int $nodeNum) use ($seenNodeLookup): bool {
+            return !isset($seenNodeLookup[$nodeNum]);
+        }));
+
+        $finalNodeNums = array_values(array_unique(array_merge($selectedNodeNums, $manualOnlyNodeNums)));
+
+        return implode(',', $finalNodeNums);
     }
 }

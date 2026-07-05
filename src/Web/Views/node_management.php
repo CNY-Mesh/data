@@ -23,8 +23,41 @@
     </div>
 
     <form method="POST" class="node-form">
+        <input type="hidden" name="use_checkbox_selection" value="1">
+
         <div class="form-section">
             <h3>Our Nodes</h3>
+            <?php if (!empty($seenNodeInfoNodes)): ?>
+                <div class="node-selection">
+                    <h4>Seen NodeInfo Nodes (<?= count($seenNodeInfoNodes) ?>)</h4>
+                    <p class="selection-help">Check the nodes that should appear as "ours".</p>
+                    <div class="selection-grid">
+                        <?php foreach ($seenNodeInfoNodes as $node): ?>
+                            <?php $nodeNum = (int) $node['node_num']; ?>
+                            <label class="selection-item">
+                                <input
+                                    type="checkbox"
+                                    class="our-node-checkbox"
+                                    name="selected_our_nodes[]"
+                                    value="<?= $nodeNum ?>"
+                                    <?= !empty($currentOurNodeNumLookup[$nodeNum]) ? 'checked' : '' ?>
+                                >
+                                <span class="selection-content">
+                                    <span class="selection-title">
+                                        <?= htmlspecialchars($node['long_name'] ?: 'Unknown') ?>
+                                    </span>
+                                    <span class="selection-meta">
+                                        <?= $nodeNum ?> (<?= dechex($nodeNum) ?>)
+                                        • <?= htmlspecialchars($node['short_name'] ?: 'N/A') ?>
+                                        • Last seen: <?= htmlspecialchars($node['last_seen_time'] ?: 'Never') ?>
+                                    </span>
+                                </span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <div class="form-group">
                 <label for="our_nodes">OUR_NODES (comma-separated):</label>
                 <input type="text" 
@@ -32,7 +65,7 @@
                        name="our_nodes" 
                        value="<?= htmlspecialchars($currentOurNodes) ?>" 
                        placeholder="e.g., ba6063d0,3126879184,ba620828">
-                <small>Primary nodes belonging to your mesh network</small>
+                <small>Primary nodes belonging to your mesh network. This field is auto-filled from the checkboxes above, but you can also add custom node IDs manually.</small>
             </div>
 
             <?php if (!empty($ourNodesDetails)): ?>
@@ -130,6 +163,66 @@
 
 .form-section {
     margin-bottom: 40px;
+}
+
+.node-selection {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--secondary-bg);
+}
+
+.node-selection h4 {
+    margin-bottom: 8px;
+}
+
+.selection-help {
+    margin-bottom: 12px;
+    color: var(--muted-color);
+}
+
+.selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 10px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.selection-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px;
+    background: var(--card-bg);
+    cursor: pointer;
+}
+
+.selection-item:hover {
+    border-color: var(--primary-color);
+}
+
+.selection-item input[type="checkbox"] {
+    margin-top: 3px;
+}
+
+.selection-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.selection-title {
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.selection-meta {
+    font-size: 12px;
+    color: var(--muted-color);
 }
 
 .form-section h3 {
@@ -307,6 +400,11 @@
 }
 
 @media (max-width: 768px) {
+    .selection-grid {
+        grid-template-columns: 1fr;
+        max-height: 300px;
+    }
+
     .node-grid {
         grid-template-columns: 1fr;
     }
@@ -321,6 +419,45 @@
     }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var ourNodesInput = document.getElementById('our_nodes');
+    var checkboxes = document.querySelectorAll('.our-node-checkbox');
+
+    if (!ourNodesInput || checkboxes.length === 0) {
+        return;
+    }
+
+    function syncOurNodesInput() {
+        var selected = [];
+        var checkboxNodeSet = {};
+        checkboxes.forEach(function (checkbox) {
+            checkboxNodeSet[String(checkbox.value)] = true;
+            if (checkbox.checked) {
+                selected.push(checkbox.value);
+            }
+        });
+
+        var currentValues = ourNodesInput.value
+            .split(',')
+            .map(function (v) { return v.trim(); })
+            .filter(function (v) { return v.length > 0; });
+
+        // Preserve manual entries not represented by this checkbox list.
+        var customValues = currentValues.filter(function (v) {
+            return !checkboxNodeSet[v];
+        });
+
+        var merged = selected.concat(customValues);
+        ourNodesInput.value = merged.join(',');
+    }
+
+    checkboxes.forEach(function (checkbox) {
+        checkbox.addEventListener('change', syncOurNodesInput);
+    });
+});
+</script>
 
         </div>
     </div>
