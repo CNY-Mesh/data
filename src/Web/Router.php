@@ -35,6 +35,8 @@ final class Router
         
         $controller = match ($route) {
             'dashboard'      => new Controllers\DashboardController(),
+            'map_embed',
+            'embed_map'      => new Controllers\MapEmbedController(),
             'nodes'          => new Controllers\NodesController(),
             'our_nodes'      => new Controllers\OurNodesController(),
             'node'           => new Controllers\NodeController(),
