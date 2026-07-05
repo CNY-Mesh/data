@@ -20,6 +20,10 @@
       <input type="checkbox" id="showAllRecentPositions" style="cursor: pointer;">
       <span>Show all recent position data</span>
     </label>
+    <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer;">
+      <input type="checkbox" id="showMapReports" checked style="cursor: pointer;">
+      <span>Show map report nodes</span>
+    </label>
   </div>
   <div id="map" style="height:400px;"></div>
 </section>
@@ -31,32 +35,64 @@
 </style>
 
 <section>
-  <h2>Recent Positions</h2>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Node</th><th>Name</th><th>Lat</th><th>Lon</th><th>Alt</th><th>RSSI</th><th>SNR</th><th>Time</th></tr></thead>
-      <tbody>
-      <?php foreach ($rows as $r): ?>
-        <tr style="<?= $r['is_known_node'] ? 'background-color: #F0FDF4;' : 'background-color: #FEF2F2;' ?>" class="position-row <?= $r['is_known_node'] ? 'known-node' : 'unknown-node' ?>">
-          <td><a href="/?r=node&id=<?= (int)$r['node_num'] ?>"><?= sprintf("!%08x", (int)$r['node_num']) ?></a></td>
-          <td>
-            <?= htmlspecialchars(($r['long_name'] ?: $r['short_name'] ?: 'Unknown')) ?>
-            <?php if ($r['is_known_node']): ?>
-              <span style="color: #10B981; font-size: 12px; font-weight: bold;">●</span>
-            <?php else: ?>
-              <span style="color: #EF4444; font-size: 12px; font-weight: bold;">?</span>
-            <?php endif; ?>
-          </td>
-          <td><?= htmlspecialchars(number_format((float)$r['lat'], 5)) ?></td>
-          <td><?= htmlspecialchars(number_format((float)$r['lon'], 5)) ?></td>
-          <td><?= $r['altitude'] ? htmlspecialchars(number_format((int)$r['altitude'])) . 'm' : '-' ?></td>
-          <td><?= $r['rx_rssi'] ? htmlspecialchars(number_format((float)$r['rx_rssi'], 1)) . 'dBm' : '-' ?></td>
-          <td><?= $r['rx_snr'] ? htmlspecialchars(number_format((float)$r['rx_snr'], 1)) . 'dB' : '-' ?></td>
-          <td><?= date('Y-m-d H:i:s', (int)$r['time']) ?></td>
-        </tr>
-      <?php endforeach; ?>
-      </tbody>
-    </table>
+  <div class="dashboard-reports-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start;">
+    <div>
+      <h2>Recent Positions</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Node</th><th>Name</th><th>Lat</th><th>Lon</th><th>Alt</th><th>RSSI</th><th>SNR</th><th>Time</th></tr></thead>
+          <tbody>
+          <?php foreach ($rows as $r): ?>
+            <tr style="<?= $r['is_known_node'] ? 'background-color: #F0FDF4;' : 'background-color: #FEF2F2;' ?>" class="position-row <?= $r['is_known_node'] ? 'known-node' : 'unknown-node' ?>">
+              <td><a href="/?r=node&id=<?= (int)$r['node_num'] ?>"><?= sprintf("!%08x", (int)$r['node_num']) ?></a></td>
+              <td>
+                <?= htmlspecialchars(($r['long_name'] ?: $r['short_name'] ?: 'Unknown')) ?>
+                <?php if ($r['is_known_node']): ?>
+                  <span style="color: #10B981; font-size: 12px; font-weight: bold;">●</span>
+                <?php else: ?>
+                  <span style="color: #EF4444; font-size: 12px; font-weight: bold;">?</span>
+                <?php endif; ?>
+              </td>
+              <td><?= htmlspecialchars(number_format((float)$r['lat'], 5)) ?></td>
+              <td><?= htmlspecialchars(number_format((float)$r['lon'], 5)) ?></td>
+              <td><?= $r['altitude'] ? htmlspecialchars(number_format((int)$r['altitude'])) . 'm' : '-' ?></td>
+              <td><?= $r['rx_rssi'] ? htmlspecialchars(number_format((float)$r['rx_rssi'], 1)) . 'dBm' : '-' ?></td>
+              <td><?= $r['rx_snr'] ? htmlspecialchars(number_format((float)$r['rx_snr'], 1)) . 'dB' : '-' ?></td>
+              <td><?= date('Y-m-d H:i:s', (int)$r['time']) ?></td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <h2>Recent Map Reports</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Node</th><th>Name</th><th>Channel</th><th>Bytes</th><th>Saved</th></tr></thead>
+          <tbody>
+          <?php foreach ($mapRows as $r): ?>
+            <tr style="<?= $r['is_known_node'] ? 'background-color: #F0FDF4;' : 'background-color: #FEF2F2;' ?>" class="map-report-row">
+              <td><?= (int)$r['id'] ?></td>
+              <td><a href="/?r=node&id=<?= (int)$r['node_num'] ?>"><?= sprintf("!%08x", (int)$r['node_num']) ?></a></td>
+              <td>
+                <?= htmlspecialchars(($r['long_name'] ?: $r['short_name'] ?: 'Unknown')) ?>
+                <?php if ($r['is_known_node']): ?>
+                  <span style="color: #10B981; font-size: 12px; font-weight: bold;">●</span>
+                <?php else: ?>
+                  <span style="color: #EF4444; font-size: 12px; font-weight: bold;">?</span>
+                <?php endif; ?>
+              </td>
+              <td><?= htmlspecialchars((string)($r['channel_id'] ?? '')) ?></td>
+              <td><?= (int)($r['bytes'] ?? 0) ?></td>
+              <td><?= date('Y-m-d H:i:s', (int)$r['saved_at']) ?></td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -72,6 +108,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   const ourNodesLayer = L.layerGroup().addTo(map); // Default: our nodes visible
   const otherKnownNodesLayer = L.layerGroup().addTo(map); // Default: known nodes visible
   const unknownNodesLayer = L.layerGroup(); // Hidden initially
+  const mapReportsLayer = L.layerGroup().addTo(map); // Default: map reports visible
+
+  // Get dashboard map reports from PHP
+  const mapReportRows = <?= json_encode($mapRows) ?>;
   
   // Define custom icons
   const ourNodeIcon = L.icon({
@@ -115,6 +155,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34]
+  });
+
+  const mapReportIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+        <path fill="#3B82F6" stroke="#1E3A8A" stroke-width="1.5" d="M12 1l4.5 6.5L23 12l-6.5 4.5L12 23l-4.5-6.5L1 12l6.5-4.5z"/>
+        <circle fill="white" cx="12" cy="12" r="3.2"/>
+      </svg>`),
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12]
   });
   
   // Fetch and display position data
@@ -160,10 +211,40 @@ window.addEventListener('DOMContentLoaded', async () => {
       m.bindPopup(popup);
     }
   });
+
+  // Add one map report marker per node using that node's latest known position
+  const latestMapReportPerNode = new Map();
+  mapReportRows.forEach(report => {
+    if (!latestMapReportPerNode.has(report.node_num)) {
+      latestMapReportPerNode.set(report.node_num, report);
+    }
+  });
+
+  latestMapReportPerNode.forEach(report => {
+    const lat = report.lat !== null ? Number(report.lat) : null;
+    const lon = report.lon !== null ? Number(report.lon) : null;
+    if (lat === null || lon === null || Number.isNaN(lat) || Number.isNaN(lon)) {
+      return;
+    }
+
+    const label = report.long_name || report.short_name || `!${Number(report.node_num).toString(16).padStart(8, '0')}`;
+    const reportTime = Number(report.saved_at || 0);
+    const positionTime = Number(report.position_time || 0);
+
+    let popup = `<b>${label}</b> <span style="color: #3B82F6; font-weight: bold;">(Map Report)</span><br/>`;
+    popup += `<b>Position:</b> ${lat.toFixed(5)}, ${lon.toFixed(5)}<br/>`;
+    if (report.channel_id) popup += `<b>Channel:</b> ${report.channel_id}<br/>`;
+    popup += `<b>Payload:</b> ${Number(report.bytes || 0)} bytes<br/>`;
+    if (reportTime > 0) popup += `<b>Report Time:</b> ${new Date(reportTime * 1000).toLocaleString()}<br/>`;
+    if (positionTime > 0) popup += `<b>Position Time:</b> ${new Date(positionTime * 1000).toLocaleString()}`;
+
+    L.marker([lat, lon], { icon: mapReportIcon }).addTo(mapReportsLayer).bindPopup(popup);
+  });
   
   // Handle checkbox changes
   const showAllKnownNodesCheckbox = document.getElementById('showAllKnownNodes');
   const showAllRecentPositionsCheckbox = document.getElementById('showAllRecentPositions');
+  const showMapReportsCheckbox = document.getElementById('showMapReports');
   
   showAllKnownNodesCheckbox.addEventListener('change', function() {
     if (this.checked) {
@@ -179,6 +260,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       unknownNodesLayer.addTo(map);
     } else {
       map.removeLayer(unknownNodesLayer);
+    }
+    updateLegend();
+  });
+
+  showMapReportsCheckbox.addEventListener('change', function() {
+    if (this.checked) {
+      mapReportsLayer.addTo(map);
+    } else {
+      map.removeLayer(mapReportsLayer);
     }
     updateLegend();
   });
@@ -202,6 +292,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       
       if (showAllRecentPositionsCheckbox.checked) {
         legendContent += '<div style="margin: 5px 0;"><span style="color: #EF4444; font-size: 16px;">●</span> Unknown Nodes</div>';
+      }
+
+      if (showMapReportsCheckbox.checked) {
+        legendContent += '<div style="margin: 5px 0;"><span style="color: #3B82F6; font-size: 16px;">◆</span> Map Reports</div>';
       }
       
       div.innerHTML = legendContent;

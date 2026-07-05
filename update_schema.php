@@ -28,6 +28,20 @@ try {
             echo "⚠ Skipped (already exists): " . substr($statement, 0, 50) . "...\n";
         }
     }
+
+    // Ensure map_reports has coordinate columns in existing databases.
+    $mapReportColumns = $pdo->query("PRAGMA table_info(map_reports)")->fetchAll(PDO::FETCH_ASSOC);
+    $mapReportColumnNames = array_map(static fn(array $column): string => (string) ($column['name'] ?? ''), $mapReportColumns);
+
+    if (!in_array('lat', $mapReportColumnNames, true)) {
+        $pdo->exec("ALTER TABLE map_reports ADD COLUMN lat REAL");
+        echo "✓ Added map_reports.lat column\n";
+    }
+
+    if (!in_array('lon', $mapReportColumnNames, true)) {
+        $pdo->exec("ALTER TABLE map_reports ADD COLUMN lon REAL");
+        echo "✓ Added map_reports.lon column\n";
+    }
     
     echo "\nSchema updates completed!\n";
     

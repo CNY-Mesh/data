@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS map_reports (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   node_num     INTEGER,
   channel_id   TEXT,
+  lat          REAL,
+  lon          REAL,
   raw_pb       BLOB,
   saved_at     INTEGER
 );

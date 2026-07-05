@@ -847,6 +847,17 @@ final class ApiController extends BaseController
     private function processMapReport(?int $node_from, array $payload, string $channel_id, int $timestamp): void
     {
         if (!$node_from) return;
+
+        $lat = null;
+        $lon = null;
+
+        if (isset($payload['latitude_i'], $payload['longitude_i'])) {
+            $lat = $payload['latitude_i'] / 1e7;
+            $lon = $payload['longitude_i'] / 1e7;
+        } elseif (isset($payload['latitude'], $payload['longitude'])) {
+            $lat = (float) $payload['latitude'];
+            $lon = (float) $payload['longitude'];
+        }
         
         // Update node info if available
         if (isset($payload['long_name']) || isset($payload['short_name'])) {
@@ -860,10 +871,10 @@ final class ApiController extends BaseController
         
         // Store map report
         $stmt = $this->db->pdo()->prepare("
-            INSERT INTO map_reports (node_num, channel_id, raw_pb, saved_at) 
-            VALUES (?, ?, ?, ?)
+            INSERT INTO map_reports (node_num, channel_id, lat, lon, raw_pb, saved_at) 
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
         
-        $stmt->execute([$node_from, $channel_id, json_encode($payload), $timestamp]);
+        $stmt->execute([$node_from, $channel_id, $lat, $lon, json_encode($payload), $timestamp]);
     }
 }
