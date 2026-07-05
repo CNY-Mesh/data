@@ -163,3 +163,33 @@ The API includes comprehensive error handling:
 - Database errors return 500 Internal Server Error  
 - Individual message parsing errors are logged but don't stop batch processing
 - All errors are returned in the response for debugging
+
+## Remote Debugging Endpoint
+
+For remote troubleshooting without shell access, a secure read-only debug endpoint is available.
+
+### Endpoint
+**GET** `/?r=api&a=debug_bundle`
+
+### Authentication
+Set `DEBUG_ENDPOINT_KEY` in the server environment or `.env`.
+
+Pass the key either as:
+- query parameter: `key=...`
+- header: `X-Debug-Key: ...`
+
+If `DEBUG_ENDPOINT_KEY` is not configured, the endpoint returns `403`.
+
+### Example
+```bash
+curl "https://your-host/?r=api&a=debug_bundle&minutes=30&limit=50&key=YOUR_DEBUG_ENDPOINT_KEY"
+```
+
+### Returned Data
+- recent raw messages (bounded)
+- recent decode errors
+- port/message summary over a recent window
+- latest node and position freshness
+- bounded tail of `data/mqtt_worker.log`
+
+This endpoint is intended for live diagnostics and should only be shared with trusted operators.

@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace App\Web\Controllers;
 
+use App\Database;
+use App\Support\Env;
+
 class MqttManagerController extends BaseController
 {
     public function handle(): void
@@ -45,6 +48,8 @@ class MqttManagerController extends BaseController
             $logEntries = $this->readLastLines($logFile, 20);
         }
 
+        $telemetry = $this->getRemoteIngestTelemetry();
+
         $this->render('mqtt_manager', [
             'isRunning' => $isRunning,
             'pid' => $pid,
@@ -52,8 +57,56 @@ class MqttManagerController extends BaseController
             'message' => $message,
             'messageType' => $messageType,
             'logFile' => $logFile,
-            'pidFile' => $pidFile
+            'pidFile' => $pidFile,
+            'telemetry' => $telemetry,
         ]);
+    }
+
+    private function getRemoteIngestTelemetry(): array
+    {
+        try {
+            $dsn = Env::get('DB_DSN') ?: 'sqlite:' . dirname(dirname(dirname(dirname(__FILE__)))) . '/data/meshtastic.sqlite';
+            $db = new Database($dsn);
+            $pdo = $db->pdo();
+
+            $latestTs = $pdo->query("SELECT MAX(COALESCE(processed_at, rx_time, id)) FROM raw_messages")->fetchColumn();
+            $now = time();
+            $cutoff5m = $now - 300;
+
+            $messagesLast5mStmt = $pdo->prepare("SELECT COUNT(*) FROM raw_messages WHERE COALESCE(processed_at, rx_time, id) >= ?");
+            $messagesLast5mStmt->execute([$cutoff5m]);
+            $messagesLast5m = (int) $messagesLast5mStmt->fetchColumn();
+
+            $decodeErrorsLast5mStmt = $pdo->prepare("SELECT COUNT(*) FROM raw_messages WHERE message_type = 'decode_error' AND COALESCE(processed_at, rx_time, id) >= ?");
+            $decodeErrorsLast5mStmt->execute([$cutoff5m]);
+            $decodeErrorsLast5m = (int) $decodeErrorsLast5mStmt->fetchColumn();
+
+            $heartbeatsLast5mStmt = $pdo->prepare("SELECT COUNT(*) FROM raw_messages WHERE message_type = 'worker_heartbeat' AND COALESCE(processed_at, rx_time, id) >= ?");
+            $heartbeatsLast5mStmt->execute([$cutoff5m]);
+            $heartbeatsLast5m = (int) $heartbeatsLast5mStmt->fetchColumn();
+
+            $latestRows = $pdo->query("SELECT id, topic, message_type, channel_id, COALESCE(processed_at, rx_time, id) as ts FROM raw_messages ORDER BY COALESCE(processed_at, rx_time, id) DESC LIMIT 10")->fetchAll();
+
+            return [
+                'ok' => true,
+                'latest_ts' => $latestTs ? (int) $latestTs : null,
+                'now' => $now,
+                'messages_last_5m' => $messagesLast5m,
+                'decode_errors_last_5m' => $decodeErrorsLast5m,
+                'heartbeats_last_5m' => $heartbeatsLast5m,
+                'latest_rows' => $latestRows,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'error' => $e->getMessage(),
+                'latest_ts' => null,
+                'messages_last_5m' => 0,
+                'decode_errors_last_5m' => 0,
+                'heartbeats_last_5m' => 0,
+                'latest_rows' => [],
+            ];
+        }
     }
 
     private function isWorkerRunning(string $pidFile): bool

@@ -398,6 +398,12 @@ class MeshtasticDecoder:
         """Decode MeshPacket protobuf"""
         try:
             result = {}
+
+            def has_field(obj, field_name: str) -> bool:
+                try:
+                    return bool(obj.HasField(field_name))
+                except Exception:
+                    return False
             
             # Safely extract fields using getattr to handle reserved keywords
             if hasattr(packet, 'to'):
@@ -425,16 +431,35 @@ class MeshtasticDecoder:
             if hasattr(packet, 'delayed'):
                 result['delayed'] = packet.delayed
             
+            decoded_present = has_field(packet, 'decoded')
+            encrypted_present = has_field(packet, 'encrypted') or (hasattr(packet, 'encrypted') and bool(packet.encrypted))
+
             # Decode payload if present
-            if hasattr(packet, 'decoded') and packet.decoded:
+            if decoded_present and hasattr(packet, 'decoded'):
                 try:
-                    result['decoded'] = self.decode_data_payload(packet.decoded)
+                    decoded_data = self.decode_data_payload(packet.decoded)
+                    result['decoded'] = decoded_data
                 except Exception as e:
                     result['decoded'] = {
                         'decode_error': str(e),
                         'raw_data': 'failed_to_parse'
                     }
-            elif hasattr(packet, 'encrypted') and packet.encrypted:
+
+                # Some messages can appear to have an empty decoded payload (port 0, no payload)
+                # while still carrying encrypted bytes. Fall back to decryption in that case.
+                has_meaningful_decoded = bool(
+                    result.get('decoded', {}).get('payload_size')
+                    or result.get('decoded', {}).get('text_message')
+                    or result.get('decoded', {}).get('position')
+                    or result.get('decoded', {}).get('nodeinfo')
+                    or result.get('decoded', {}).get('telemetry')
+                    or (result.get('decoded', {}).get('portnum', 0) not in [0, None])
+                )
+
+                if not has_meaningful_decoded and encrypted_present:
+                    decoded_present = False
+
+            if (not decoded_present) and encrypted_present:
                 result['encrypted'] = {
                     'size': len(packet.encrypted),
                     'data_hex': packet.encrypted.hex()[:64] + "..." if len(packet.encrypted.hex()) > 64 else packet.encrypted.hex()
@@ -882,7 +907,7 @@ class MQTTMonitor:
         self.last_heartbeat_at = 0.0
         
         # Initialize API client
-        api_url = os.getenv('API_URL', 'https://data.cnymesh.org/api?a=mesh_data')
+        api_url = os.getenv('API_URL', 'https://data.cnymesh.org/?r=api&a=mesh_data')
         self.api_client = ApiClient(api_url)
         print(f"🔗 API endpoint: {api_url}")
 
@@ -1002,21 +1027,26 @@ class MQTTMonitor:
             else:
                 # Show successful decode
                 if 'packet' in decoded and 'from' in decoded['packet']:
-                    from_id = decoded['packet']['from']
-                    
-                    if 'decrypted' in decoded['packet']:
-                        # Successful decryption - send to API
+                    packet = decoded['packet']
+                    from_id = packet['from']
+
+                    # Send both unencrypted decoded and decrypted payloads to API.
+                    if 'decoded' in packet or 'decrypted' in packet:
+                        normalized_packet = dict(packet)
+                        if 'decoded' in packet:
+                            normalized_packet['decoded'] = packet['decoded']
+                        elif 'decrypted' in packet:
+                            normalized_packet['decoded'] = packet['decrypted']
+
                         self.api_client.add_message(
                             topic=msg.topic,
                             timestamp=timestamp,
-                            decoded_packet=decoded
+                            decoded_packet=normalized_packet
                         )
-                        
-                        # Compact success message
-                        payload_data = decoded['packet']['decrypted']
+
+                        payload_data = normalized_packet.get('decoded', {})
                         port_name = payload_data.get('portnum_name', 'unknown')
-                        
-                        # Show specific info based on type
+
                         extra_info = ""
                         if 'text_message' in payload_data:
                             extra_info = f" text: '{payload_data['text_message'][:30]}...'" if len(payload_data['text_message']) > 30 else f" text: '{payload_data['text_message']}'"
@@ -1035,13 +1065,13 @@ class MQTTMonitor:
                             node = payload_data['nodeinfo']
                             name = node.get('long_name', node.get('short_name', 'unknown'))
                             extra_info = f" node: {name}"
-                        
+
                         # print(f"✅ {port_name} from {hex(from_id)}{extra_info} → API")
-                        
-                    elif 'decrypted_hex' in decoded['packet']:
+
+                    elif 'decrypted_hex' in packet:
                         # Partial decryption
                         print(f"⚠️  Partial decrypt from {hex(from_id)} - raw hex available")
-                    elif 'encrypted' in decoded['packet']:
+                    elif 'encrypted' in packet:
                         # Failed to decrypt - show minimal info
                         print(f"🔒 Encrypted from {hex(from_id)} - decryption failed")
         else:
@@ -1083,6 +1113,19 @@ class MQTTMonitor:
         print(
             f"💓 Worker heartbeat: connected to {self.config.host}:{self.config.port}, "
             f"topic={self.config.topic}, processed_messages={self.message_count}"
+        )
+
+        # Publish heartbeat to API so remote status is visible via DB-backed pages.
+        self.api_client.add_message(
+            topic='worker/heartbeat',
+            timestamp=int(now),
+            json_data={
+                'type': 'worker_heartbeat',
+                'status': 'running',
+                'worker_host': self.config.host,
+                'worker_topic': self.config.topic,
+                'processed_messages': self.message_count,
+            }
         )
     
     def start(self):

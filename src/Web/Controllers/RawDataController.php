@@ -20,7 +20,7 @@ class RawDataController extends BaseController
             try {
                 if ($table === 'raw_messages') {
                     // Get regular raw messages (excluding decode errors)
-                    $stmt = $pdo->query("SELECT * FROM raw_messages WHERE message_type != 'decode_error' OR message_type IS NULL ORDER BY processed_at DESC LIMIT 100");
+                    $stmt = $pdo->query("SELECT * FROM raw_messages WHERE message_type != 'decode_error' OR message_type IS NULL ORDER BY COALESCE(processed_at, rx_time, id) DESC LIMIT 100");
                 } else {
                     $stmt = $pdo->query("SELECT * FROM $table ORDER BY ROWID DESC LIMIT 100");
                 }
@@ -33,7 +33,7 @@ class RawDataController extends BaseController
         
         // Get decode errors separately
         try {
-            $stmt = $pdo->query("SELECT * FROM raw_messages WHERE message_type = 'decode_error' ORDER BY processed_at DESC LIMIT 100");
+            $stmt = $pdo->query("SELECT * FROM raw_messages WHERE message_type = 'decode_error' ORDER BY COALESCE(processed_at, rx_time, id) DESC LIMIT 100");
             $data['decode_errors'] = $stmt ? $stmt->fetchAll() : [];
         } catch (\Exception $e) {
             $data['decode_errors'] = [];

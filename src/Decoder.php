@@ -46,54 +46,77 @@ final class Decoder
     public const MAP_REPORT_APP       = 73;     // Map reports
     public const POWERSTRESS_APP      = 74;     // Power stress testing
     public const PRIVATE_APP          = 256;    // Private applications start
-    public const ATAK_FORWARDER_APP   = 257;    // ATAK forwarder    // Built-in default LongFast PSK (override with LONGFAST_B64_KEY if set).
-    // Updated to 32 bytes for AES-256 compatibility
-    private const DEFAULT_LONGFAST_PSK = "\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01";
+    public const ATAK_FORWARDER_APP   = 257;    // ATAK forwarder
 
-    private function getLongFastKey(): string {
-        $b64 = Env::get('LONGFAST_B64_KEY', '');
-        
-        // Try to get key from environment first
-        if ($b64 !== '') {
-            $raw = base64_decode($b64, true);
-            if ($raw !== false) {
-                // If it's a single byte, try different expansion methods
-                if (strlen($raw) === 1) {
-                    // The Meshtastic default channel uses 0x01, but this might mean:
-                    // 1. A specific well-known key derived from this byte
-                    // 2. A key derivation using this as a seed
-                    
-                    // Try method 1: Traditional repeat (what we were doing)
-                    $key1 = str_repeat($raw, 16);
-                    
-                    // Try method 2: Common crypto padding with zeros  
-                    $key2 = $raw . str_repeat("\0", 15);
-                    
-                    // Try method 3: The actual Meshtastic default (might be all 0x01)
-                    if ($raw === "\x01") {
-                        // Some implementations use this exact pattern for default
-                        $key3 = "\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01";
-                        // Or try all zeros (no encryption)
-                        $key4 = str_repeat("\0", 16);
-                    }
-                    
-                    // For now, let's log all methods and use the repeat method
-                    $this->debug("Single byte PSK detected: " . bin2hex($raw));
-                    $this->debug("Method 1 (repeat): " . bin2hex($key1));
-                    $this->debug("Method 2 (zero-pad): " . bin2hex($key2));
-                    
-                    // Use the traditional method for now
-                    return $key1;
-                }
-                // If it's already 16 or 32 bytes, use as-is
-                if (strlen($raw) == 16 || strlen($raw) == 32) {
-                    return $raw;
+    // Meshtastic default primary channel key used by LongFast (16-byte AES key).
+    private const DEFAULT_LONGFAST_PSK =
+        "\xD4\xF1\xBB\x3A\x20\x29\x07\x59\xF0\xBC\xFF\xAB\xCF\x4E\x69\x01";
+
+    private function getChannelKey(string $channelId): string
+    {
+        $channel = trim($channelId);
+        $envKey = $this->buildChannelEnvKey($channel);
+
+        if ($envKey !== null) {
+            $fromEnv = Env::get($envKey, '');
+            if ($fromEnv !== '') {
+                $decoded = $this->decodeChannelKey($fromEnv, $channel, $envKey);
+                if ($decoded !== null) {
+                    return $decoded;
                 }
             }
         }
-        
-        // Fall back to the default PSK
+
+        $longFast = Env::get('LONGFAST_B64_KEY', '');
+        if ($longFast !== '') {
+            $decoded = $this->decodeChannelKey($longFast, $channel, 'LONGFAST_B64_KEY');
+            if ($decoded !== null) {
+                return $decoded;
+            }
+        }
+
         return self::DEFAULT_LONGFAST_PSK;
+    }
+
+    private function buildChannelEnvKey(string $channelId): ?string
+    {
+        if ($channelId === '') {
+            return null;
+        }
+
+        $normalized = strtoupper(preg_replace('/[^A-Za-z0-9]+/', '_', $channelId) ?? '');
+        $normalized = trim($normalized, '_');
+        if ($normalized === '') {
+            return null;
+        }
+
+        return $normalized . '_B64_KEY';
+    }
+
+    private function decodeChannelKey(string $b64, string $channelId, string $sourceVar): ?string
+    {
+        $raw = base64_decode($b64, true);
+        if ($raw === false || $raw === '') {
+            $this->debug("Invalid base64 key in $sourceVar for channel '$channelId'");
+            return null;
+        }
+
+        $len = strlen($raw);
+        if (in_array($len, [16, 24, 32], true)) {
+            return $raw;
+        }
+
+        // Meshtastic commonly stores the default key as AQ== (single byte 0x01).
+        if ($len === 1) {
+            if ($raw === "\x01") {
+                return self::DEFAULT_LONGFAST_PSK;
+            }
+
+            return str_repeat($raw, 16);
+        }
+
+        $this->debug("Unsupported key length ($len) in $sourceVar for channel '$channelId'");
+        return null;
     }
 
     public function parseEnvelope(string $binary): ?ServiceEnvelope {
@@ -170,17 +193,17 @@ final class Decoder
                 return [$decoded, $pkt]; // Return in expected format
             }
             
-            // If no decoded data, try to decrypt
-            $this->debug("No decoded data found, attempting decryption");
-            $this->debug("About to call trySimpleDecryption");
-            $decrypted = $this->trySimpleDecryption($env, $pkt);
-            $this->debug("trySimpleDecryption returned: " . ($decrypted ? "success" : "null"));
-            if ($decrypted !== null) {
-                // For now, create a mock Data object from decrypted content
-                // This is a simplified approach - in real implementation we'd need to 
-                // properly construct the Data object
-                $this->debug("Decryption successful");
-                return [$decrypted, $pkt];
+            if (!$pkt->hasEncrypted()) {
+                $this->debug("Packet has no decoded or encrypted payload");
+                return null;
+            }
+
+            // If no decoded data, try to decrypt encrypted Data payload using Meshtastic nonce layout.
+            $this->debug("No decoded data found, attempting Meshtastic decryption");
+            $decryptedData = $this->decryptPacketData($env, $pkt);
+            if ($decryptedData !== null) {
+                $this->debug("Decryption successful for channel: " . (string) $env->getChannelId());
+                return [$decryptedData, $pkt];
             }
             
             $this->debug("All decoding attempts failed");
@@ -192,130 +215,56 @@ final class Decoder
         }
     }
 
-    private function trySimpleDecryption(ServiceEnvelope $env, MeshPacket $pkt): ?array {
+    private function decryptPacketData(ServiceEnvelope $env, MeshPacket $pkt): ?Data
+    {
         try {
-            $this->debug("*** ENTERED trySimpleDecryption METHOD ***");
-            $channelId = (string)$env->getChannelId();
-            $this->debug("Attempting to decrypt channel: $channelId");
-            
-            // Only try LongFast for now (most common working case)
-            if (strcasecmp($channelId, 'LongFast') !== 0) {
-                $this->debug("Skipping non-LongFast channel for decryption");
-                return null;
-            }
-
-            $ciphertext = $pkt->getEncrypted(); 
+            $channelId = (string) $env->getChannelId();
+            $ciphertext = $pkt->getEncrypted();
             if ($ciphertext === '') {
-                $this->debug("Empty ciphertext");
+                $this->debug("No encrypted payload to decrypt");
                 return null;
             }
-            
-            $cipherLength = strlen($ciphertext);
-            if ($cipherLength < 16) {
-                $this->debug("Ciphertext too short ($cipherLength bytes) - minimum 16 bytes required");
-                return null;
-            }
-            
-            $this->debug("Ciphertext length: $cipherLength bytes");
-            
-            $key = $this->getLongFastKey();
-            if (strlen($key) !== 32) {
-                $this->debug("Invalid key length: " . strlen($key) . " bytes - expected 32");
-                return null;
-            }
-            
-            $this->debug("Using key length: " . strlen($key) . " bytes");
-            $this->debug("Key hex: " . bin2hex($key));
-            
-            // Try the most common IV patterns
-            $this->debug("Trying decryption with packet ID: " . $pkt->getId() . ", from: " . $pkt->getFrom());
-            $ivPatterns = [
-                // Pattern 1: From + ID in big-endian + padding
-                pack('N', $pkt->getFrom()) . pack('N', $pkt->getId()) . str_repeat("\0", 8),
-                // Pattern 2: From + ID in little-endian + padding  
-                pack('V', $pkt->getFrom()) . pack('V', $pkt->getId()) . str_repeat("\0", 8),
-                // Pattern 3: All zeros (sometimes used for testing)
-                str_repeat("\0", 16),
-                // Pattern 4: Just packet ID
-                pack('N', $pkt->getId()) . str_repeat("\0", 12),
-                pack('V', $pkt->getId()) . str_repeat("\0", 12),
-                // Pattern 5: Channel-based IV
-                substr(hash('sha256', $channelId, true), 0, 16),
-            ];
 
-            foreach (['aes-256-ctr', 'aes-128-ctr'] as $cipher) {
-                if (str_contains($cipher, '256') && strlen($key) != 32) continue;
-                if (str_contains($cipher, '128') && strlen($key) != 16) continue;
-                
-                $this->debug("Trying cipher: $cipher");
-                
-                foreach ($ivPatterns as $ivIndex => $iv) {
-                    $this->debug("Trying IV pattern $ivIndex: " . bin2hex(substr($iv, 0, 8)) . "...");
-                    $pt = @openssl_decrypt($ciphertext, $cipher, $key, OPENSSL_RAW_DATA, $iv);
-                    if ($pt !== false && strlen($pt) > 0) {
-                        $this->debug("Decryption produced " . strlen($pt) . " bytes: " . bin2hex(substr($pt, 0, 16)) . "...");
-                        if ($this->looksLikeValidProtobuf($pt)) {
-                            $this->debug("Output looks like valid protobuf");
-                            try {
-                                // Suppress warnings during protobuf parsing
-                                $oldErrorReporting = error_reporting(E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR);
-                                
-                                $data = new Data();
-                                $data->mergeFromString($pt); 
-                                
-                                // Restore error reporting
-                                error_reporting($oldErrorReporting);
-                                
-                                if ($data->getPortnum() > 0 && $data->getPortnum() < 1000) {
-                                    $this->debug("Successfully decrypted with $cipher, IV pattern $ivIndex, port " . $data->getPortnum());
-                                    return [$data, $pkt];
-                                } else {
-                                    $this->debug("Port number out of range: " . $data->getPortnum());
-                                }
-                            } catch (\Throwable $e) {
-                                // Restore error reporting in case of exception
-                                error_reporting($oldErrorReporting);
-                                $this->debug("Failed to parse as Data protobuf: " . $e->getMessage());
-                            }
-                        } else {
-                            $this->debug("Output doesn't look like valid protobuf");
-                        }
-                    } else {
-                        $this->debug("Decryption failed or produced empty result");
-                    }
-                }
+            $key = $this->getChannelKey($channelId);
+            $keyLen = strlen($key);
+            $cipher = match ($keyLen) {
+                16 => 'aes-128-ctr',
+                24 => 'aes-192-ctr',
+                32 => 'aes-256-ctr',
+                default => null,
+            };
+
+            if ($cipher === null) {
+                $this->debug("Unsupported key length for decryption: $keyLen bytes");
+                return null;
             }
-            
-            $this->debug("Decryption failed for channel $channelId");
-            return null;
-            
+
+            // Meshtastic nonce format: [id(le32), 0, from(le32), 0].
+            $nonce = pack('V', $pkt->getId()) . pack('V', 0) . pack('V', $pkt->getFrom()) . pack('V', 0);
+            $plaintext = @openssl_decrypt($ciphertext, $cipher, $key, OPENSSL_RAW_DATA, $nonce);
+            if ($plaintext === false || $plaintext === '') {
+                $this->debug("OpenSSL decryption failed for channel '$channelId'");
+                return null;
+            }
+
+            $oldErrorReporting = error_reporting(E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR);
+            try {
+                $data = new Data();
+                $data->mergeFromString($plaintext);
+            } finally {
+                error_reporting($oldErrorReporting);
+            }
+
+            if ($data->getPortnum() <= 0 && $data->getPayload() === '') {
+                $this->debug("Decrypted payload did not parse into a valid Data message");
+                return null;
+            }
+
+            return $data;
         } catch (\Throwable $e) {
-            $this->debug("Exception during decryption: " . $e->getMessage());
+            $this->debug("Exception during packet decryption: " . $e->getMessage());
             return null;
         }
-    }
-
-    private function looksLikeValidProtobuf(string $data): bool {
-        $length = strlen($data);
-        if ($length < 2) return false;
-        
-        // Additional validation for protobuf structure
-        if ($length > 1000) return false; // Reasonable size limit
-        
-        $firstByte = ord($data[0]);
-        // Protobuf field tags should be reasonable (1-15 for efficient encoding)
-        if ($firstByte > 0x7F) return false; // Wire type + field number should be < 128 for common cases
-        
-        // Check if first few bytes look reasonable for protobuf field encoding
-        $validBytes = 0;
-        for ($i = 0; $i < min(5, $length); $i++) {
-            $byte = ord($data[$i]);
-            // Protobuf uses varint encoding, so high bit set is common but not universal
-            if ($byte >= 0x08 && $byte <= 0x7F) $validBytes++; // Common protobuf field tag ranges
-            if ($byte < 128) $validBytes++; // ASCII-range bytes are good indicators
-        }
-        
-        return $validBytes >= 2; // At least 2 reasonable bytes
     }
 
     private function debug(string $message): void {

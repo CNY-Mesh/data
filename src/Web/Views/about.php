@@ -16,27 +16,21 @@
                         to help operators understand network performance, node activity, and communication patterns.
                     </p>
 
-                    <div class="alert alert-warning mb-4" role="alert">
-                        <h4 class="alert-heading text-warning mb-3">
-                            <i class="fas fa-exclamation-triangle me-2"></i>Known Issues
+                    <div class="alert alert-info mb-4" role="alert">
+                        <h4 class="alert-heading text-info mb-3">
+                            <i class="fas fa-key me-2"></i>Encrypted MQTT Support
                         </h4>
-                        <h6 class="fw-bold">Encrypted LongFast Message Decoding</h6>
-                        <p class="mb-3">
-                            The system currently experiences difficulties decoding some or all encrypted LongFast messages, 
-                            even when the correct encryption keys are provided. This is an ongoing technical limitation 
-                            that affects the completeness of message data displayed in the dashboard.
+                        <p class="mb-2">
+                            Encrypted Meshtastic MQTT packets are supported using Meshtastic AES-CTR decoding.
                         </p>
-                        <h6 class="fw-bold">Impact:</h6>
-                        <ul class="mb-3">
-                            <li>Some encrypted text messages may appear as raw/undecoded data</li>
-                            <li>Certain telemetry and position updates may not display properly</li>
-                            <li>Node information from encrypted channels may be incomplete</li>
-                        </ul>
+                        <p class="mb-2">
+                            For non-default channels, set channel keys in environment variables using the pattern
+                            <code>CHANNELNAME_B64_KEY</code> (example: <code>LONGSLOW_B64_KEY</code>).
+                        </p>
                         <p class="mb-0">
                             <small class="text-muted">
-                                <i class="fas fa-tools me-1"></i>
-                                This issue is actively being investigated and improved. Message decoding accuracy 
-                                may vary depending on the specific encryption configuration used by different nodes.
+                                <i class="fas fa-info-circle me-1"></i>
+                                The default LongFast key is used automatically when no channel-specific key is configured.
                             </small>
                         </p>
                     </div>

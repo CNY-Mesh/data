@@ -2,6 +2,8 @@
 declare(strict_types=1);
 namespace App\Web\Controllers;
 
+use App\Support\Env;
+
 final class ApiController extends BaseController
 {
     public function handle(): void
@@ -77,11 +79,171 @@ final class ApiController extends BaseController
                 $limit = (int) ($_GET['limit'] ?? 100);
                 $offset = (int) ($_GET['offset'] ?? 0);
                 $limit = min($limit, 1000); // Cap at 1000
-                $rows = $this->db->pdo()->query("SELECT * FROM raw_messages ORDER BY processed_at DESC LIMIT $limit OFFSET $offset")->fetchAll();
+                    $rows = $this->db->pdo()->query("SELECT * FROM raw_messages ORDER BY COALESCE(processed_at, rx_time, id) DESC LIMIT $limit OFFSET $offset")->fetchAll();
                 $this->json($rows); return;
+            case 'debug_bundle':
+                $this->handleDebugBundle();
+                return;
             default:
                 $this->json(['error'=>'unknown api']);
         }
+    }
+
+    private function handleDebugBundle(): void
+    {
+        if (!$this->isDebugAuthorized()) {
+            http_response_code(403);
+            $this->json(['error' => 'forbidden']);
+            return;
+        }
+
+        $limit = min(max((int) ($_GET['limit'] ?? 50), 1), 200);
+        $minutes = min(max((int) ($_GET['minutes'] ?? 30), 1), 1440);
+        $sinceTs = time() - ($minutes * 60);
+
+        $pdo = $this->db->pdo();
+
+        $latestRowsStmt = $pdo->prepare("\n            SELECT\n                id, topic, channel_id, gateway_id, node_from, node_to,\n                port_num, message_type, is_encrypted, is_json,\n                payload_length, rx_time, processed_at,\n                SUBSTR(payload_hex, 1, 128) as payload_hex_preview\n            FROM raw_messages\n            ORDER BY COALESCE(processed_at, rx_time, id) DESC\n            LIMIT ?\n        ");
+        $latestRowsStmt->bindValue(1, $limit, \PDO::PARAM_INT);
+        $latestRowsStmt->execute();
+        $latestRows = $latestRowsStmt->fetchAll();
+
+        $decodeErrorsStmt = $pdo->prepare("\n            SELECT\n                id, topic, channel_id, message_type, is_encrypted,\n                payload_length, rx_time, processed_at,\n                SUBSTR(payload_hex, 1, 128) as payload_hex_preview\n            FROM raw_messages\n            WHERE message_type = 'decode_error'\n            ORDER BY COALESCE(processed_at, rx_time, id) DESC\n            LIMIT ?\n        ");
+        $decodeErrorsStmt->bindValue(1, min($limit, 100), \PDO::PARAM_INT);
+        $decodeErrorsStmt->execute();
+        $decodeErrors = $decodeErrorsStmt->fetchAll();
+
+        $portSummaryStmt = $pdo->prepare("\n            SELECT\n                COALESCE(port_num, -1) as port_num,\n                COALESCE(message_type, '') as message_type,\n                SUM(CASE WHEN is_encrypted = 1 THEN 1 ELSE 0 END) as encrypted_count,\n                COUNT(*) as count\n            FROM raw_messages\n            WHERE CASE\n                WHEN processed_at IS NOT NULL AND processed_at > 0 THEN processed_at\n                WHEN rx_time IS NOT NULL AND rx_time > 0 THEN rx_time\n                ELSE NULL\n            END >= ?\n            GROUP BY COALESCE(port_num, -1), COALESCE(message_type, '')\n            ORDER BY count DESC\n            LIMIT 30\n        ");
+        $portSummaryStmt->execute([$sinceTs]);
+        $portSummary = $portSummaryStmt->fetchAll();
+
+        $latestNode = $pdo->query("SELECT node_num, node_id, long_name, short_name, last_seen FROM nodes ORDER BY last_seen DESC LIMIT 1")->fetch();
+        $latestPosition = $pdo->query("SELECT node_num, lat, lon, altitude, time, topic FROM positions ORDER BY time DESC LIMIT 1")->fetch();
+
+        $latestMessageTs = $pdo->query("\n            SELECT MAX(CASE\n                WHEN processed_at IS NOT NULL AND processed_at > 0 THEN processed_at\n                WHEN rx_time IS NOT NULL AND rx_time > 0 THEN rx_time\n                ELSE NULL\n            END)\n            FROM raw_messages\n        ")->fetchColumn();
+        $messagesLastWindowStmt = $pdo->prepare("\n            SELECT COUNT(*)\n            FROM raw_messages\n            WHERE CASE\n                WHEN processed_at IS NOT NULL AND processed_at > 0 THEN processed_at\n                WHEN rx_time IS NOT NULL AND rx_time > 0 THEN rx_time\n                ELSE NULL\n            END >= ?\n        ");
+        $messagesLastWindowStmt->execute([$sinceTs]);
+        $messagesLastWindow = (int) $messagesLastWindowStmt->fetchColumn();
+
+        $debugLogTail = $this->readDebugLogTail();
+
+        $this->json([
+            'ok' => true,
+            'generated_at' => time(),
+            'window_minutes' => $minutes,
+            'messages_in_window' => $messagesLastWindow,
+            'latest_message_ts' => $latestMessageTs ? (int) $latestMessageTs : null,
+            'latest_node' => $latestNode ?: null,
+            'latest_position' => $latestPosition ?: null,
+            'port_summary' => $portSummary,
+            'decode_errors' => $decodeErrors,
+            'recent_raw_messages' => $latestRows,
+            'worker_log_tail' => $debugLogTail,
+        ]);
+    }
+
+    private function isDebugAuthorized(): bool
+    {
+        $configured = trim((string) Env::get('DEBUG_ENDPOINT_KEY', ''));
+        if ($configured === '') {
+            return false;
+        }
+
+        $provided = '';
+        if (isset($_GET['key'])) {
+            $provided = (string) $_GET['key'];
+        } elseif (isset($_SERVER['HTTP_X_DEBUG_KEY'])) {
+            $provided = (string) $_SERVER['HTTP_X_DEBUG_KEY'];
+        }
+
+        if ($provided === '') {
+            return false;
+        }
+
+        return hash_equals($configured, $provided);
+    }
+
+    private function readDebugLogTail(int $lineCount = 60, int $maxBytes = 262144): array
+    {
+        $baseDir = dirname(dirname(dirname(dirname(__FILE__))));
+        $logFile = $baseDir . '/data/mqtt_worker.log';
+
+        if (!file_exists($logFile)) {
+            return [
+                'path' => $logFile,
+                'exists' => false,
+                'lines' => [],
+            ];
+        }
+
+        $handle = @fopen($logFile, 'rb');
+        if ($handle === false) {
+            return [
+                'path' => $logFile,
+                'exists' => true,
+                'error' => 'unable_to_open',
+                'lines' => [],
+            ];
+        }
+
+        if (fseek($handle, 0, SEEK_END) !== 0) {
+            fclose($handle);
+            return [
+                'path' => $logFile,
+                'exists' => true,
+                'error' => 'unable_to_seek',
+                'lines' => [],
+            ];
+        }
+
+        $fileSize = ftell($handle);
+        if ($fileSize === false || $fileSize <= 0) {
+            fclose($handle);
+            return [
+                'path' => $logFile,
+                'exists' => true,
+                'lines' => [],
+            ];
+        }
+
+        $buffer = '';
+        $position = $fileSize;
+        $bytesRead = 0;
+        $chunkSize = 4096;
+
+        while ($position > 0 && substr_count($buffer, "\n") <= $lineCount && $bytesRead < $maxBytes) {
+            $readSize = min($chunkSize, $position);
+            $position -= $readSize;
+
+            if (fseek($handle, $position) !== 0) {
+                break;
+            }
+
+            $chunk = fread($handle, $readSize);
+            if ($chunk === false || $chunk === '') {
+                break;
+            }
+
+            $buffer = $chunk . $buffer;
+            $bytesRead += $readSize;
+        }
+
+        fclose($handle);
+
+        $lines = preg_split('/\r\n|\n|\r/', $buffer);
+        if ($lines === false) {
+            $lines = [];
+        }
+
+        if (!empty($lines) && end($lines) === '') {
+            array_pop($lines);
+        }
+
+        return [
+            'path' => $logFile,
+            'exists' => true,
+            'lines' => array_slice($lines, -$lineCount),
+        ];
     }
     
     private function handlePost(): void
@@ -241,6 +403,11 @@ final class ApiController extends BaseController
         $node_from = $packet['from'] ?? null;
         $node_to = $packet['to'] ?? null;
         $decoded = $packet['decoded'] ?? [];
+
+        if ($node_from) {
+            // Ensure node row exists for binary/non-JSON packets before updating typed data.
+            $this->updateNode((int) $node_from, null, $timestamp);
+        }
         
         if (!$decoded || isset($decoded['decode_error'])) {
             return; // Skip messages with decode errors
@@ -280,13 +447,19 @@ final class ApiController extends BaseController
     
     private function extractChannelId(string $topic): string
     {
-        // Extract channel from topic like: msh/US/2/e/LongFast/!gateway
+        // Extract channel from variable-depth topics such as:
+        // msh/US/2/e/LongFast/!gateway
+        // msh/US/NY/CNY/2/e/LongFast/!gateway
+        // msh/US/NY/CNY/2/json/LongFast/!gateway
         $parts = explode('/', $topic);
-        if (count($parts) >= 5 && $parts[3] === 'e') {
-            return $parts[4] ?? '';
-        } elseif (count($parts) >= 4 && $parts[3] === 'json') {
-            return $parts[4] ?? '';
+        $count = count($parts);
+
+        for ($i = 0; $i < $count - 1; $i++) {
+            if (($parts[$i] === 'e' || $parts[$i] === 'json') && isset($parts[$i + 1])) {
+                return $parts[$i + 1];
+            }
         }
+
         return '';
     }
     
@@ -311,6 +484,7 @@ final class ApiController extends BaseController
         $topic = $message['topic'] ?? '';
         $channel_id = $this->extractChannelId($topic);
         $gateway_id = $this->extractGatewayId($topic);
+        $topicIsEncrypted = str_contains($topic, '/e/');
         
         // Extract fields from message
         $node_from = null;
@@ -318,7 +492,7 @@ final class ApiController extends BaseController
         $port_num = null;
         $payload_hex = '';
         $payload_length = 0;
-        $is_encrypted = false;
+        $is_encrypted = $topicIsEncrypted;
         $is_json = isset($message['json_data']);
         $message_type = '';
         $rx_time = $message['timestamp'] ?? time();
@@ -353,7 +527,10 @@ final class ApiController extends BaseController
             $port_num = $decoded['portnum'] ?? null;
             $payload_hex = $decoded['payload_hex'] ?? '';
             $payload_length = $decoded['payload_size'] ?? 0;
-            $is_encrypted = isset($packet['encrypted']);
+            // Prefer explicit packet encryption field when present; otherwise trust topic path.
+            if (array_key_exists('encrypted', $packet)) {
+                $is_encrypted = true;
+            }
         }
         
         $stmt->execute([
@@ -554,22 +731,23 @@ final class ApiController extends BaseController
     private function processNodeInfo(?int $node_from, array $payload, int $timestamp): void
     {
         if (!$node_from) return;
-        
+
         $stmt = $this->db->pdo()->prepare("
-            UPDATE nodes SET 
-                long_name = ?, 
-                short_name = ?, 
-                hardware = ?, 
-                last_seen = ?
-            WHERE node_num = ?
+            INSERT INTO nodes (node_num, long_name, short_name, hardware, last_seen)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(node_num) DO UPDATE SET
+                long_name = COALESCE(excluded.long_name, nodes.long_name),
+                short_name = COALESCE(excluded.short_name, nodes.short_name),
+                hardware = COALESCE(excluded.hardware, nodes.hardware),
+                last_seen = excluded.last_seen
         ");
-        
+
         $stmt->execute([
+            $node_from,
             $payload['longname'] ?? $payload['long_name'] ?? null,
             $payload['shortname'] ?? $payload['short_name'] ?? null,
             $payload['hardware'] ?? $payload['hw_model'] ?? null,
             $timestamp,
-            $node_from
         ]);
     }
     

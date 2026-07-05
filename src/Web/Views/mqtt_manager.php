@@ -79,6 +79,61 @@ $title = "MQTT Worker Manager";
 
 <div class="card">
     <div class="card-header">
+        Remote Ingest Telemetry (Database)
+    </div>
+    <div class="card-body">
+        <?php if (!empty($telemetry['ok'])): ?>
+            <?php
+                $latestTs = $telemetry['latest_ts'] ?? null;
+                $ageSeconds = $latestTs ? (time() - $latestTs) : null;
+            ?>
+            <p class="mb-2 text-muted">
+                This section reflects remote ingestion state from database writes and is more reliable than local file logs for remote workers.
+            </p>
+            <ul>
+                <li><strong>Newest message time:</strong> <?= $latestTs ? date('Y-m-d H:i:s', $latestTs) : 'none' ?></li>
+                <li><strong>Data freshness:</strong> <?= $ageSeconds !== null ? $ageSeconds . 's ago' : 'unknown' ?></li>
+                <li><strong>Messages in last 5 min:</strong> <?= (int) ($telemetry['messages_last_5m'] ?? 0) ?></li>
+                <li><strong>Decode errors in last 5 min:</strong> <?= (int) ($telemetry['decode_errors_last_5m'] ?? 0) ?></li>
+                <li><strong>Worker heartbeats in last 5 min:</strong> <?= (int) ($telemetry['heartbeats_last_5m'] ?? 0) ?></li>
+            </ul>
+
+            <?php if (!empty($telemetry['latest_rows'])): ?>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Time</th>
+                                <th>Type</th>
+                                <th>Channel</th>
+                                <th>Topic</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($telemetry['latest_rows'] as $row): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars((string) ($row['id'] ?? '')) ?></td>
+                                    <td><?= !empty($row['ts']) ? date('Y-m-d H:i:s', (int) $row['ts']) : 'unknown' ?></td>
+                                    <td><?= htmlspecialchars((string) ($row['message_type'] ?? '')) ?></td>
+                                    <td><?= htmlspecialchars((string) ($row['channel_id'] ?? '')) ?></td>
+                                    <td><code><?= htmlspecialchars((string) ($row['topic'] ?? '')) ?></code></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        <?php else: ?>
+            <p class="text-danger mb-0">
+                Could not query remote ingest telemetry: <?= htmlspecialchars((string) ($telemetry['error'] ?? 'unknown error')) ?>
+            </p>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
         Recent Log Output
         <?php if (file_exists($logFile)): ?>
             <small style="float: right; font-weight: normal;"><?= basename($logFile) ?></small>
@@ -92,7 +147,7 @@ $title = "MQTT Worker Manager";
 <?php endforeach; ?>
             </div>
         <?php else: ?>
-            <p class="text-muted">No log file found or log is empty.</p>
+            <p class="text-muted">No local log file found or log is empty. For remote workers, use Remote Ingest Telemetry above.</p>
         <?php endif; ?>
     </div>
 </div>
