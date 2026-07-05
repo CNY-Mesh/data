@@ -148,13 +148,15 @@ All messages are stored in the `raw_messages` table for full history, while pars
 
 ## Testing
 
-Use the provided `test_api.php` script to test the API:
+Send a sample POST request to the API endpoint to verify it is working:
 
 ```bash
-php test_api.php
+curl -X POST "http://localhost:8080/api?a=mesh_data" \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"topic":"msh/US/2/json/LongFast/!test123","timestamp":1700000000,"json_data":{"channel":0,"from":1128011160,"to":4294967295,"type":"position","payload":{"latitude_i":387809280,"longitude_i":-905936896,"altitude":134,"time":1700000000},"rssi":-95,"snr":7.25}}]}'
 ```
 
-This will send sample data to verify the endpoint is working correctly.
+This sends sample data to verify the endpoint is working correctly.
 
 ## Error Handling
 

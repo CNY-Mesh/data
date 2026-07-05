@@ -127,7 +127,7 @@ def test_decode_error_scenarios():
     print("   - Manual decode error from Python test script")
     print("   - Complete decode failure - invalid protobuf")
     print("   - Encryption failure error")
-    print("\n💡 Run test_decode_error_fix.php to verify they were stored")
+    print("\n💡 Open /test_decode_error_fix.php on the web server to verify they were stored")
 
 if __name__ == "__main__":
     test_decode_error_scenarios()
